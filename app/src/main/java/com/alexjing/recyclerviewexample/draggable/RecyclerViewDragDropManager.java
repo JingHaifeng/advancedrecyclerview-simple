@@ -1,9 +1,10 @@
 package com.alexjing.recyclerviewexample.draggable;
 
 import android.graphics.Point;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.view.ViewCompat;
+import android.support.v4.view.MotionEventCompat;
 import android.support.v7.widget.RecyclerView;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
@@ -55,6 +56,8 @@ public class RecyclerViewDragDropManager implements DraggableConstants {
     private DraggableViewHolder mDraggableViewHoleder;
     // 记录当前拖动条目的信息
     private DraggingItemInfo mDraggingItemInfo;
+    // 分发事件
+    private InternalHandler mHandler;
 
     private Point mLastTouchPoint;
     private Point mDragStartTouchPoint;
@@ -156,16 +159,131 @@ public class RecyclerViewDragDropManager implements DraggableConstants {
         mTouchSlop = ViewConfiguration.get(mRecyclerView.getContext()).getScaledTouchSlop();
         mScrollTouchSlop = ((int) (mTouchSlop * SCROLL_TOUCH_SLOP_MULTIPLY + 0.5));
 
+        mHandler = new InternalHandler(this);
         //边缘效果支持
         // TODO: 16-6-12
+
     }
 
     public void release() {
+        isDragging();
+
+        if (mHandler != null) {
+            mHandler.release();
+            mHandler = null;
+        }
+
+        // 释放边缘效果
+        if (mRecyclerView != null && mInternalOnItemTouchListener != null) {
+            mRecyclerView.removeOnItemTouchListener(mInternalOnItemTouchListener);
+        }
+        mInternalOnItemTouchListener = null;
+
+        if (mRecyclerView != null && mInternalOnScrollListener != null) {
+            mRecyclerView.removeOnScrollListener(mInternalOnScrollListener);
+        }
+        mInternalOnScrollListener = null;
+
+        // TODO: 16-6-12 释放滚动任务
+
+        mAdapter = null;
+        mRecyclerView = null;
+    }
+
+    public boolean isDragging() {
+        return (mDraggingItemInfo != null) && mHandler != null && mHandler.isCancelDragRequested();
+    }
+
+    ////////触碰事件/////////
+    boolean onInterceptTouchEvent(RecyclerView rv, MotionEvent e) {
+        final int action = MotionEventCompat.getActionMasked(e);
+        switch (action) {
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                handleActionUpOrCancel(action, true);
+                break;
+            case MotionEvent.ACTION_DOWN:
+
+            case MotionEvent.ACTION_MOVE:
+
+        }
+        return false;
+    }
+
+    private void handleActionUpOrCancel(int action, boolean requestFinish) {
 
     }
 
     ////////////////////////
     private static DraggableWrapperAdapter getDraggableItemWrapperAdapter(RecyclerView rv) {
         return Utils.findWrappedAdapter(rv.getAdapter(), DraggableWrapperAdapter.class);
+    }
+
+    ///////////通过 Handler 分发触碰事件////////////
+    private static final class InternalHandler extends Handler {
+        private static final int MSG_LONG_PRESS = 1;
+        private static final int MSG_DEFERRED_CANCEL_DRAG = 2;
+
+        private RecyclerViewDragDropManager mHolder;
+        private MotionEvent mDownMotionEvent;
+
+        public InternalHandler(RecyclerViewDragDropManager holder) {
+            mHolder = holder;
+        }
+
+        public void release() {
+            removeCallbacks(null);
+            mHolder = null;
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_LONG_PRESS: {
+                    // 处理长按
+                }
+                break;
+                case MSG_DEFERRED_CANCEL_DRAG: {
+                    // 处理取消
+                }
+                break;
+            }
+        }
+
+        /**
+         * 开始检查是否开始长按
+         * timeout == 0 时 即为触碰触发
+         *
+         * @param e
+         * @param timeout
+         */
+        public void startLongPressDetection(MotionEvent e, int timeout) {
+            cancelLongPressDetection();
+            mDownMotionEvent = MotionEvent.obtain(e);
+            sendEmptyMessageAtTime(MSG_LONG_PRESS, e.getDownTime() + timeout);
+        }
+
+        public void cancelLongPressDetection() {
+            removeMessages(MSG_LONG_PRESS);
+            if (mDownMotionEvent != null) {
+                mDownMotionEvent.recycle();
+                mDownMotionEvent = null;
+            }
+        }
+
+        public void removeDeferredCancelDragRequest() {
+            removeMessages(MSG_DEFERRED_CANCEL_DRAG);
+        }
+
+        public void requestDeferredCancelDrag() {
+            if (isCancelDragRequested()) {
+                return;
+            }
+            sendEmptyMessage(MSG_DEFERRED_CANCEL_DRAG);
+        }
+
+        public boolean isCancelDragRequested() {
+            return hasMessages(MSG_DEFERRED_CANCEL_DRAG);
+        }
     }
 }
