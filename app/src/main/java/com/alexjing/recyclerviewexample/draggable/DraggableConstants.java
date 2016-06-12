@@ -1,6 +1,8 @@
 package com.alexjing.recyclerviewexample.draggable;
 
 /**
+ *
+ *
  * @author: haifeng jing(haifeng_jing@kingdee.com)
  * @date: 2016-06-07
  * @time: 13:49

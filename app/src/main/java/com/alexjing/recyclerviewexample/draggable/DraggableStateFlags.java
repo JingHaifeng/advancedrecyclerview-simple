@@ -6,6 +6,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 /**
+ * 注解拖动的状态
+ *
  * @author: haifeng jing(haifeng_jing@kingdee.com)
  * @date: 2016-06-07
  * @time: 13:53

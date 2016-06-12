@@ -1,6 +1,8 @@
 package com.alexjing.recyclerviewexample;
 
 /**
+ *
+ *
  * @author: haifeng jing(haifeng_jing@kingdee.com)
  * @date: 2016-06-07
  * @time: 09:38
